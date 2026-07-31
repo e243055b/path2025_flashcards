@@ -11,61 +11,104 @@
   <title>病理フラッシュカード</title>
 
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: sans-serif;
-      text-align: center;
       margin: 0;
       padding: 16px;
+      font-family: sans-serif;
+      background-color: #ffffff;
+      color: #222222;
     }
 
-    .category-area {
-      margin-bottom: 16px;
+    h1 {
+      margin-top: 0;
+      text-align: center;
     }
 
-    label {
-      font-size: 18px;
-    }
-
-    select {
-      padding: 8px 12px;
-      font-size: 18px;
-    }
-
-    #photo {
-      display: block;
-      max-width: 100%;
-      max-height: 62vh;
-      object-fit: contain;
+    /*
+      全体を左側のカテゴリ欄と
+      右側のカード欄に分けます。
+    */
+    .page-layout {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+      max-width: 1200px;
       margin: 0 auto;
-      border: 1px solid #aaa;
     }
 
-    #hint {
-      display: none;
-      margin: 18px auto;
-      padding: 14px;
-      max-width: 700px;
-      font-size: 20px;
-      background-color: #f1f1f1;
-      border-radius: 8px;
+    /*
+      左側のカテゴリ欄です。
+    */
+    .sidebar {
+      width: 180px;
+      flex-shrink: 0;
     }
 
-    #answer {
-      display: none;
-      margin: 20px;
-      font-size: 28px;
+    .sidebar-title {
+      margin: 0 0 10px;
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    #categoryButtons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /*
+      通常のカテゴリボタンです。
+    */
+    .category-button {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #999999;
+      border-radius: 6px;
+      background-color: #ffffff;
+      color: #222222;
+      font-size: 16px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .category-button:hover {
+      background-color: #eeeeee;
+    }
+
+    /*
+      選択中のカテゴリボタンです。
+    */
+    .category-button.active {
+      border-color: #2667c9;
+      background-color: #2667c9;
+      color: #ffffff;
       font-weight: bold;
     }
 
-    .buttons {
-      margin-top: 16px;
+    /*
+      右側のカード表示欄です。
+    */
+    .main-area {
+      flex: 1;
+      min-width: 0;
+      text-align: center;
     }
 
-    button {
-      margin: 6px;
-      padding: 10px 18px;
+    #selectedCategory {
+      margin-top: 0;
+      margin-bottom: 6px;
       font-size: 18px;
-      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #count {
+      margin-top: 0;
+      margin-bottom: 12px;
     }
 
     #error {
@@ -73,8 +116,98 @@
       white-space: pre-wrap;
     }
 
-    #categoryName {
+    #photo {
+      display: block;
+      max-width: 100%;
+      max-height: 62vh;
+      margin: 0 auto;
+      border: 1px solid #aaaaaa;
+      object-fit: contain;
+    }
+
+    /*
+      画像が読み込めなかったときのメッセージです。
+    */
+    #imageError {
+      display: none;
+      margin: 16px auto;
+      color: #b00020;
+    }
+
+    #hint {
+      display: none;
+      max-width: 750px;
+      margin: 18px auto;
+      padding: 14px;
+      border-radius: 8px;
+      background-color: #f1f1f1;
+      font-size: 20px;
+      text-align: left;
+      white-space: pre-wrap;
+    }
+
+    #answer {
+      display: none;
+      margin: 20px;
+      font-size: 28px;
       font-weight: bold;
+      white-space: pre-wrap;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .control-button {
+      padding: 10px 18px;
+      border: 1px solid #777777;
+      border-radius: 6px;
+      background-color: #ffffff;
+      color: #222222;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .control-button:hover {
+      background-color: #eeeeee;
+    }
+
+    .control-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    /*
+      画面が狭い場合は、
+      カテゴリ欄をカード欄の上へ移動します。
+    */
+    @media (max-width: 700px) {
+      .page-layout {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+      }
+
+      #categoryButtons {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .category-button {
+        width: auto;
+        text-align: center;
+      }
+
+      #photo {
+        max-height: 55vh;
+      }
     }
   </style>
 </head>
@@ -83,81 +216,128 @@
 
   <h1>病理フラッシュカード</h1>
 
-  <div class="category-area">
-    <label for="categorySelect">
-      カテゴリ：
-    </label>
+  <div class="page-layout">
 
-    <select id="categorySelect">
-      <option value="すべて">
+    <!-- 左側のカテゴリ欄 -->
+    <aside class="sidebar">
+      <p class="sidebar-title">
+        カテゴリ
+      </p>
+
+      <div id="categoryButtons"></div>
+    </aside>
+
+    <!-- 右側のカード欄 -->
+    <main class="main-area">
+
+      <p id="selectedCategory">
         すべて
-      </option>
-    </select>
-  </div>
+      </p>
 
-  <p>
-    選択中：
-    <span id="categoryName">すべて</span>
-  </p>
+      <p id="count">
+        読み込み中...
+      </p>
 
-  <p id="count">読み込み中...</p>
+      <p id="error"></p>
 
-  <p id="error"></p>
+      <img
+        id="photo"
+        alt="病理画像"
+      >
 
-  <img
-    id="photo"
-    alt="病理画像"
-  >
+      <p id="imageError">
+        画像を読み込めませんでした。
+      </p>
 
-  <div id="hint"></div>
+      <div id="hint"></div>
 
-  <div id="answer"></div>
+      <div id="answer"></div>
 
-  <div class="buttons">
-    <button id="previousButton">
-      前へ
-    </button>
+      <div class="buttons">
+        <button
+          id="previousButton"
+          class="control-button"
+          type="button"
+        >
+          前へ
+        </button>
 
-    <button id="hintButton">
-      ヒントを見る
-    </button>
+        <button
+          id="hintButton"
+          class="control-button"
+          type="button"
+        >
+          ヒントを見る
+        </button>
 
-    <button id="answerButton">
-      答えを見る
-    </button>
+        <button
+          id="answerButton"
+          class="control-button"
+          type="button"
+        >
+          答えを見る
+        </button>
 
-    <button id="nextButton">
-      次へ
-    </button>
+        <button
+          id="nextButton"
+          class="control-button"
+          type="button"
+        >
+          次へ
+        </button>
+      </div>
+
+    </main>
   </div>
 
   <script>
+    /*
+      すべてのカードを保存します。
+    */
     let allCards = [];
-    let filteredCards = [];
-    let current = 0;
 
     /*
-      CSVの1行を列ごとに分割します。
+      現在選択されているカテゴリに属するカードです。
+    */
+    let filteredCards = [];
 
-      Excelがカンマを含む文章を
-      ダブルクォーテーションで囲んだ場合にも
+    /*
+      現在表示しているカード番号です。
+    */
+    let currentIndex = 0;
+
+    /*
+      現在選択されているカテゴリです。
+    */
+    let selectedCategory = "すべて";
+
+
+    /*
+      CSVの1行を列に分割します。
+
+      カンマを含む文章が
+      ダブルクォーテーションで囲まれている場合にも
       対応します。
     */
     function parseCSVLine(line) {
       const values = [];
 
-      let value = "";
+      let currentValue = "";
       let insideQuotes = false;
 
       for (let i = 0; i < line.length; i++) {
         const character = line[i];
 
         if (character === '"') {
+          /*
+            CSV内の "" は、
+            1個の " として扱います。
+          */
           if (
             insideQuotes &&
             line[i + 1] === '"'
           ) {
-            value += '"';
+            currentValue += '"';
             i++;
 
           } else {
@@ -168,21 +348,22 @@
           character === "," &&
           !insideQuotes
         ) {
-          values.push(value);
-          value = "";
+          values.push(currentValue);
+          currentValue = "";
 
         } else {
-          value += character;
+          currentValue += character;
         }
       }
 
-      values.push(value);
+      values.push(currentValue);
 
       return values;
     }
 
+
     /*
-      カテゴリ欄を配列に変換します。
+      複数カテゴリを配列に変換します。
 
       例：
       代謝障害|肝胆膵
@@ -198,11 +379,29 @@
         .filter(category => category !== "");
     }
 
+
+    /*
+      CSVに書かれた画像名へ
+      images/を自動で付けます。
+    */
+    function createImagePath(fileName) {
+      if (fileName.startsWith("images/")) {
+        return fileName;
+      }
+
+      return "images/" + fileName;
+    }
+
+
     /*
       cards.csvを読み込みます。
     */
     async function loadCards() {
       try {
+        /*
+          URLに現在時刻を付けて、
+          古いCSVのキャッシュを避けます。
+        */
         const response = await fetch(
           "cards.csv?v=" + Date.now()
         );
@@ -215,12 +414,13 @@
 
         const csvText = await response.text();
 
+        /*
+          UTF-8 BOMと空行を除去します。
+        */
         const lines = csvText
           .replace(/^\uFEFF/, "")
           .split(/\r?\n/)
-          .filter(
-            line => line.trim() !== ""
-          );
+          .filter(line => line.trim() !== "");
 
         if (lines.length < 2) {
           throw new Error(
@@ -229,10 +429,10 @@
         }
 
         /*
-          1行目の列名を読み込みます。
+          CSVの1行目から列番号を取得します。
         */
         const headers = parseCSVLine(lines[0])
-          .map(value => value.trim());
+          .map(header => header.trim());
 
         const imageIndex =
           headers.indexOf("image");
@@ -260,13 +460,12 @@
         }
 
         /*
-          2行目以降をカードとして読み込みます。
+          CSVの2行目以降をカードに変換します。
         */
         allCards = lines
           .slice(1)
           .map(line => {
-            const columns =
-              parseCSVLine(line);
+            const columns = parseCSVLine(line);
 
             const fileName =
               (
@@ -288,25 +487,11 @@
                 columns[hintIndex] || ""
               ).trim();
 
-            /*
-              カテゴリを配列に変換します。
-            */
-            const categories =
-              parseCategories(categoryText);
-
-            /*
-              CSVには画像ファイル名だけを書き、
-              images/はHTML側で自動追加します。
-            */
-            const imagePath =
-              fileName.startsWith("images/")
-                ? fileName
-                : "images/" + fileName;
-
             return {
-              image: imagePath,
+              image: createImagePath(fileName),
               answer: answer,
-              categories: categories,
+              categories:
+                parseCategories(categoryText),
               hint: hint
             };
           })
@@ -322,37 +507,26 @@
           );
         }
 
-        createCategoryOptions();
+        /*
+          カテゴリボタンを作成します。
+        */
+        createCategoryButtons();
 
-        filteredCards = [...allCards];
-
-        displayCard();
+        /*
+          最初はすべてのカードを表示対象にします。
+        */
+        filterByCategory("すべて");
 
       } catch (error) {
-        document.getElementById(
-          "count"
-        ).textContent = "";
-
-        document.getElementById(
-          "error"
-        ).textContent =
-          "読み込みエラー\n" +
-          error.message +
-          "\n\nGitHub PagesのURLから" +
-          "開いているか確認してください。";
+        showLoadError(error.message);
       }
     }
 
-    /*
-      全カードに含まれるカテゴリを集め、
-      プルダウンを作成します。
-    */
-    function createCategoryOptions() {
-      const categorySelect =
-        document.getElementById(
-          "categorySelect"
-        );
 
+    /*
+      全カードからカテゴリ一覧を作ります。
+    */
+    function getAllCategories() {
       const categorySet = new Set();
 
       allCards.forEach(card => {
@@ -361,60 +535,108 @@
         });
       });
 
-      const categories =
-        Array.from(categorySet);
+      return Array
+        .from(categorySet)
+        .sort(
+          (a, b) =>
+            a.localeCompare(b, "ja")
+        );
+    }
 
-      /*
-        五十音順に並べます。
-      */
-      categories.sort(
-        (a, b) =>
-          a.localeCompare(b, "ja")
-      );
+
+    /*
+      左側にカテゴリボタンを作ります。
+    */
+    function createCategoryButtons() {
+      const container =
+        document.getElementById(
+          "categoryButtons"
+        );
+
+      container.innerHTML = "";
+
+      const categories = [
+        "すべて",
+        ...getAllCategories()
+      ];
 
       categories.forEach(category => {
-        const option =
-          document.createElement("option");
+        const button =
+          document.createElement("button");
 
-        option.value = category;
-        option.textContent = category;
+        button.type = "button";
+        button.textContent = category;
+        button.className =
+          "category-button";
 
-        categorySelect.appendChild(option);
+        /*
+          CSSやJavaScriptからカテゴリを
+          判別できるように保存します。
+        */
+        button.dataset.category = category;
+
+        button.addEventListener(
+          "click",
+          () => {
+            filterByCategory(category);
+          }
+        );
+
+        container.appendChild(button);
       });
     }
 
+
     /*
-      選択されたカテゴリでカードを絞り込みます。
-
-      カードのcategories配列に
-      選択カテゴリが含まれていれば表示します。
+      選択されたカテゴリで
+      カードを絞り込みます。
     */
-    function filterByCategory() {
-      const selectedCategory =
-        document.getElementById(
-          "categorySelect"
-        ).value;
+    function filterByCategory(category) {
+      selectedCategory = category;
+      currentIndex = 0;
 
-      document.getElementById(
-        "categoryName"
-      ).textContent = selectedCategory;
-
-      if (selectedCategory === "すべて") {
+      if (category === "すべて") {
         filteredCards = [...allCards];
 
       } else {
         filteredCards = allCards.filter(
           card =>
-            card.categories.includes(
-              selectedCategory
-            )
+            card.categories.includes(category)
         );
       }
 
-      current = 0;
+      document.getElementById(
+        "selectedCategory"
+      ).textContent = category;
+
+      updateActiveCategoryButton();
 
       displayCard();
     }
+
+
+    /*
+      選択中のカテゴリボタンだけ
+      activeクラスを付けます。
+    */
+    function updateActiveCategoryButton() {
+      const buttons =
+        document.querySelectorAll(
+          ".category-button"
+        );
+
+      buttons.forEach(button => {
+        const isSelected =
+          button.dataset.category ===
+          selectedCategory;
+
+        button.classList.toggle(
+          "active",
+          isSelected
+        );
+      });
+    }
+
 
     /*
       現在のカードを表示します。
@@ -423,11 +645,23 @@
       const photo =
         document.getElementById("photo");
 
+      const imageError =
+        document.getElementById(
+          "imageError"
+        );
+
       const hint =
         document.getElementById("hint");
 
       const answer =
         document.getElementById("answer");
+
+      /*
+        ヒントと答えを隠します。
+      */
+      hint.style.display = "none";
+      answer.style.display = "none";
+      imageError.style.display = "none";
 
       if (filteredCards.length === 0) {
         document.getElementById(
@@ -435,133 +669,100 @@
         ).textContent =
           "このカテゴリにはカードがありません。";
 
+        photo.style.display = "none";
         photo.removeAttribute("src");
 
-        hint.style.display = "none";
-        answer.style.display = "none";
+        updateControlButtons();
 
         return;
       }
 
-      const card = filteredCards[current];
+      const card =
+        filteredCards[currentIndex];
 
+      photo.style.display = "block";
       photo.src = card.image;
 
-      hint.textContent = card.hint;
+      /*
+        ヒントが空欄の場合の表示です。
+      */
+      hint.textContent =
+        card.hint !== ""
+          ? card.hint
+          : "ヒントは登録されていません。";
 
       answer.textContent = card.answer;
-
-      /*
-        カードが変わるたびに
-        ヒントと答えを隠します。
-      */
-      hint.style.display = "none";
-      answer.style.display = "none";
-
-      document.getElementById(
-        "hintButton"
-      ).textContent = "ヒントを見る";
-
-      document.getElementById(
-        "answerButton"
-      ).textContent = "答えを見る";
 
       document.getElementById(
         "count"
       ).textContent =
-        (current + 1) +
+        (currentIndex + 1) +
         " / " +
         filteredCards.length;
+
+      updateControlButtons();
     }
 
+
     /*
-      ヒントの表示と非表示を切り替えます。
+      ヒントを表示します。
+      一度表示した後も、ボタン名は変えません。
     */
-    function toggleHint() {
+    function showHint() {
       if (filteredCards.length === 0) {
         return;
       }
 
-      const hint =
-        document.getElementById("hint");
-
-      const hintButton =
-        document.getElementById(
-          "hintButton"
-        );
-
-      if (hint.style.display === "block") {
-        hint.style.display = "none";
-
-        hintButton.textContent =
-          "ヒントを見る";
-
-      } else {
-        hint.style.display = "block";
-
-        hintButton.textContent =
-          "ヒントを隠す";
-      }
+      document.getElementById(
+        "hint"
+      ).style.display = "block";
     }
 
+
     /*
-      答えの表示と非表示を切り替えます。
+      答えを表示します。
+      一度表示した後も、ボタン名は変えません。
     */
-    function toggleAnswer() {
+    function showAnswer() {
       if (filteredCards.length === 0) {
         return;
       }
 
-      const answer =
-        document.getElementById("answer");
-
-      const answerButton =
-        document.getElementById(
-          "answerButton"
-        );
-
-      if (
-        answer.style.display === "block"
-      ) {
-        answer.style.display = "none";
-
-        answerButton.textContent =
-          "答えを見る";
-
-      } else {
-        answer.style.display = "block";
-
-        answerButton.textContent =
-          "答えを隠す";
-      }
+      document.getElementById(
+        "answer"
+      ).style.display = "block";
     }
+
 
     /*
       次のカードへ進みます。
+      最後のカードの次は最初へ戻ります。
     */
-    function nextCard() {
+    function showNextCard() {
       if (filteredCards.length === 0) {
         return;
       }
 
-      current =
-        (current + 1) %
+      currentIndex =
+        (currentIndex + 1) %
         filteredCards.length;
 
       displayCard();
     }
 
+
     /*
       前のカードへ戻ります。
+      最初のカードの前は最後へ移動します。
     */
-    function previousCard() {
+    function showPreviousCard() {
       if (filteredCards.length === 0) {
         return;
       }
 
-      current =
+      currentIndex =
         (
-          current -
+          currentIndex -
           1 +
           filteredCards.length
         ) %
@@ -570,46 +771,132 @@
       displayCard();
     }
 
+
     /*
-      ボタンとプルダウンに処理を割り当てます。
+      カードがない場合は
+      操作ボタンを無効にします。
+    */
+    function updateControlButtons() {
+      const disabled =
+        filteredCards.length === 0;
+
+      document.getElementById(
+        "previousButton"
+      ).disabled = disabled;
+
+      document.getElementById(
+        "hintButton"
+      ).disabled = disabled;
+
+      document.getElementById(
+        "answerButton"
+      ).disabled = disabled;
+
+      document.getElementById(
+        "nextButton"
+      ).disabled = disabled;
+    }
+
+
+    /*
+      CSVの読み込みエラーを表示します。
+    */
+    function showLoadError(message) {
+      document.getElementById(
+        "count"
+      ).textContent = "";
+
+      document.getElementById(
+        "photo"
+      ).style.display = "none";
+
+      document.getElementById(
+        "error"
+      ).textContent =
+        "読み込みエラー\n" +
+        message +
+        "\n\nGitHub PagesのURLから" +
+        "開いているか確認してください。";
+
+      filteredCards = [];
+
+      updateControlButtons();
+    }
+
+
+    /*
+      画像ファイルが存在しない場合の処理です。
     */
     document
-      .getElementById("categorySelect")
+      .getElementById("photo")
       .addEventListener(
-        "change",
-        filterByCategory
+        "error",
+        () => {
+          document.getElementById(
+            "photo"
+          ).style.display = "none";
+
+          document.getElementById(
+            "imageError"
+          ).style.display = "block";
+        }
       );
 
+
+    /*
+      画像が正常に読み込まれた場合の処理です。
+    */
+    document
+      .getElementById("photo")
+      .addEventListener(
+        "load",
+        () => {
+          document.getElementById(
+            "photo"
+          ).style.display = "block";
+
+          document.getElementById(
+            "imageError"
+          ).style.display = "none";
+        }
+      );
+
+
+    /*
+      各操作ボタンに処理を割り当てます。
+    */
     document
       .getElementById("previousButton")
       .addEventListener(
         "click",
-        previousCard
+        showPreviousCard
       );
 
     document
       .getElementById("hintButton")
       .addEventListener(
         "click",
-        toggleHint
+        showHint
       );
 
     document
       .getElementById("answerButton")
       .addEventListener(
         "click",
-        toggleAnswer
+        showAnswer
       );
 
     document
       .getElementById("nextButton")
       .addEventListener(
         "click",
-        nextCard
+        showNextCard
       );
 
+
     /*
-      ページを開いたときにCSVを読み込みます。
+      ページを開いたときに
+      CSVを読み込みます。
     */
     loadCards();
   </script>
