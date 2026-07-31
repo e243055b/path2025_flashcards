@@ -1,3 +1,7 @@
-﻿image,answer
-lung01.jpg,肺水腫
-lung02.jpg,肺過誤腫
+﻿image,answer,category,hint
+lung01.jpg,肺水腫,肺,ひんと
+lung02.jpg,肺過誤腫,肺,ひんと
+liver01.jpg,脂肪肝,肝胆膵,ひんと
+liver02.jpg,アミロイドーシス,肝胆膵|代謝障害,ひんと
+liver03.jpg,肝細胞癌,肝胆膵,ひんと
+kidney01.jpg,糖尿病,代謝障害,ひんと
