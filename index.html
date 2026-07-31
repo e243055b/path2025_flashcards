@@ -29,8 +29,8 @@
     }
 
     /*
-      全体を左側のカテゴリ欄と
-      右側のカード欄に分けます。
+      左側のカテゴリ欄と
+      右側のカード欄を横に並べます。
     */
     .page-layout {
       display: flex;
@@ -41,7 +41,7 @@
     }
 
     /*
-      左側のカテゴリ欄です。
+      左側のカテゴリ欄
     */
     .sidebar {
       width: 180px;
@@ -61,9 +61,6 @@
       gap: 8px;
     }
 
-    /*
-      通常のカテゴリボタンです。
-    */
     .category-button {
       width: 100%;
       padding: 10px 12px;
@@ -81,7 +78,7 @@
     }
 
     /*
-      選択中のカテゴリボタンです。
+      選択中のカテゴリボタン
     */
     .category-button.active {
       border-color: #2667c9;
@@ -91,7 +88,7 @@
     }
 
     /*
-      右側のカード表示欄です。
+      右側のカード欄
     */
     .main-area {
       flex: 1;
@@ -101,9 +98,54 @@
 
     #selectedCategory {
       margin-top: 0;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       font-size: 18px;
       font-weight: bold;
+    }
+
+    /*
+      番号入力欄
+    */
+    .number-jump-area {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .number-jump-area label {
+      font-size: 16px;
+    }
+
+    #numberInput {
+      width: 100px;
+      padding: 8px;
+      border: 1px solid #888888;
+      border-radius: 6px;
+      font-size: 17px;
+      text-align: center;
+    }
+
+    #jumpButton {
+      padding: 8px 14px;
+      border: 1px solid #777777;
+      border-radius: 6px;
+      background-color: #ffffff;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #jumpButton:hover {
+      background-color: #eeeeee;
+    }
+
+    #jumpMessage {
+      min-height: 1.4em;
+      margin: 4px 0 8px;
+      color: #b00020;
+      font-size: 15px;
     }
 
     #count {
@@ -119,15 +161,12 @@
     #photo {
       display: block;
       max-width: 100%;
-      max-height: 62vh;
+      max-height: 60vh;
       margin: 0 auto;
       border: 1px solid #aaaaaa;
       object-fit: contain;
     }
 
-    /*
-      画像が読み込めなかったときのメッセージです。
-    */
     #imageError {
       display: none;
       margin: 16px auto;
@@ -176,14 +215,15 @@
       background-color: #eeeeee;
     }
 
-    .control-button:disabled {
+    .control-button:disabled,
+    #jumpButton:disabled {
       cursor: not-allowed;
       opacity: 0.5;
     }
 
     /*
-      画面が狭い場合は、
-      カテゴリ欄をカード欄の上へ移動します。
+      スマートフォンなどの狭い画面では、
+      カテゴリボタンを上側へ移動します。
     */
     @media (max-width: 700px) {
       .page-layout {
@@ -206,7 +246,7 @@
       }
 
       #photo {
-        max-height: 55vh;
+        max-height: 52vh;
       }
     }
   </style>
@@ -233,6 +273,30 @@
       <p id="selectedCategory">
         すべて
       </p>
+
+      <!-- 通し番号による移動欄 -->
+      <div class="number-jump-area">
+        <label for="numberInput">
+          通し番号：
+        </label>
+
+        <input
+          id="numberInput"
+          type="number"
+          min="1"
+          inputmode="numeric"
+          placeholder="番号"
+        >
+
+        <button
+          id="jumpButton"
+          type="button"
+        >
+          移動
+        </button>
+      </div>
+
+      <p id="jumpMessage"></p>
 
       <p id="count">
         読み込み中...
@@ -292,28 +356,28 @@
 
   <script>
     /*
-      すべてのカードを保存します。
+      CSV内のすべてのカード
     */
     let allCards = [];
 
     /*
-      現在選択されているカテゴリに属するカードです。
+      現在選択中のカテゴリに属するカード
     */
     let filteredCards = [];
 
     /*
-      現在表示しているカード番号です。
+      現在表示しているカードの位置
     */
     let currentIndex = 0;
 
     /*
-      現在選択されているカテゴリです。
+      現在選択中のカテゴリ
     */
     let selectedCategory = "すべて";
 
 
     /*
-      CSVの1行を列に分割します。
+      CSVの1行を列ごとに分割します。
 
       カンマを含む文章が
       ダブルクォーテーションで囲まれている場合にも
@@ -329,10 +393,6 @@
         const character = line[i];
 
         if (character === '"') {
-          /*
-            CSV内の "" は、
-            1個の " として扱います。
-          */
           if (
             insideQuotes &&
             line[i + 1] === '"'
@@ -363,7 +423,7 @@
 
 
     /*
-      複数カテゴリを配列に変換します。
+      複数カテゴリを配列へ変換します。
 
       例：
       代謝障害|肝胆膵
@@ -381,15 +441,32 @@
 
 
     /*
-      CSVに書かれた画像名へ
-      images/を自動で付けます。
+      CSVの画像名から画像パスを作ります。
+
+      amyloid01
+      ↓
+      images/amyloid01.jpg
+
+      誤って.jpgを書いても動作します。
     */
     function createImagePath(fileName) {
-      if (fileName.startsWith("images/")) {
-        return fileName;
+      let cleanedName = fileName.trim();
+
+      if (cleanedName.startsWith("images/")) {
+        cleanedName = cleanedName.substring(
+          "images/".length
+        );
       }
 
-      return "images/" + fileName;
+      /*
+        拡張子が書かれていない場合だけ
+        .jpgを追加します。
+      */
+      if (!/\.[a-zA-Z0-9]+$/.test(cleanedName)) {
+        cleanedName += ".jpg";
+      }
+
+      return "images/" + cleanedName;
     }
 
 
@@ -398,10 +475,6 @@
     */
     async function loadCards() {
       try {
-        /*
-          URLに現在時刻を付けて、
-          古いCSVのキャッシュを避けます。
-        */
         const response = await fetch(
           "cards.csv?v=" + Date.now()
         );
@@ -414,9 +487,6 @@
 
         const csvText = await response.text();
 
-        /*
-          UTF-8 BOMと空行を除去します。
-        */
         const lines = csvText
           .replace(/^\uFEFF/, "")
           .split(/\r?\n/)
@@ -429,10 +499,13 @@
         }
 
         /*
-          CSVの1行目から列番号を取得します。
+          CSVの1行目から各列の位置を取得します。
         */
         const headers = parseCSVLine(lines[0])
           .map(header => header.trim());
+
+        const numberIndex =
+          headers.indexOf("number");
 
         const imageIndex =
           headers.indexOf("image");
@@ -447,6 +520,7 @@
           headers.indexOf("hint");
 
         if (
+          numberIndex === -1 ||
           imageIndex === -1 ||
           answerIndex === -1 ||
           categoryIndex === -1 ||
@@ -454,18 +528,23 @@
         ) {
           throw new Error(
             "cards.csvの1行目には " +
-            "image,answer,category,hint " +
+            "number,image,answer,category,hint " +
             "が必要です。"
           );
         }
 
         /*
-          CSVの2行目以降をカードに変換します。
+          CSVの2行目以降をカードへ変換します。
         */
         allCards = lines
           .slice(1)
           .map(line => {
             const columns = parseCSVLine(line);
+
+            const numberText =
+              (
+                columns[numberIndex] || ""
+              ).trim();
 
             const fileName =
               (
@@ -488,6 +567,7 @@
               ).trim();
 
             return {
+              number: Number(numberText),
               image: createImagePath(fileName),
               answer: answer,
               categories:
@@ -496,7 +576,9 @@
             };
           })
           .filter(card =>
-            card.image !== "images/" &&
+            Number.isInteger(card.number) &&
+            card.number > 0 &&
+            card.image !== "images/.jpg" &&
             card.answer !== "" &&
             card.categories.length > 0
           );
@@ -508,13 +590,31 @@
         }
 
         /*
-          カテゴリボタンを作成します。
+          通し番号の重複を確認します。
         */
-        createCategoryButtons();
+        const numbers =
+          allCards.map(card => card.number);
+
+        const uniqueNumbers =
+          new Set(numbers);
+
+        if (
+          uniqueNumbers.size !== numbers.length
+        ) {
+          throw new Error(
+            "cards.csv内で通し番号が重複しています。"
+          );
+        }
 
         /*
-          最初はすべてのカードを表示対象にします。
+          通し番号の小さい順に並べます。
         */
+        allCards.sort(
+          (a, b) => a.number - b.number
+        );
+
+        createCategoryButtons();
+
         filterByCategory("すべて");
 
       } catch (error) {
@@ -524,7 +624,7 @@
 
 
     /*
-      全カードからカテゴリ一覧を作ります。
+      全カードからカテゴリ一覧を取得します。
     */
     function getAllCategories() {
       const categorySet = new Set();
@@ -569,10 +669,6 @@
         button.className =
           "category-button";
 
-        /*
-          CSSやJavaScriptからカテゴリを
-          判別できるように保存します。
-        */
         button.dataset.category = category;
 
         button.addEventListener(
@@ -588,8 +684,7 @@
 
 
     /*
-      選択されたカテゴリで
-      カードを絞り込みます。
+      選択したカテゴリでカードを絞り込みます。
     */
     function filterByCategory(category) {
       selectedCategory = category;
@@ -609,6 +704,10 @@
         "selectedCategory"
       ).textContent = category;
 
+      document.getElementById(
+        "jumpMessage"
+      ).textContent = "";
+
       updateActiveCategoryButton();
 
       displayCard();
@@ -616,8 +715,7 @@
 
 
     /*
-      選択中のカテゴリボタンだけ
-      activeクラスを付けます。
+      選択中のカテゴリボタンだけ色を変えます。
     */
     function updateActiveCategoryButton() {
       const buttons =
@@ -657,6 +755,7 @@
         document.getElementById("answer");
 
       /*
+        カードが変わるたびに
         ヒントと答えを隠します。
       */
       hint.style.display = "none";
@@ -683,9 +782,6 @@
       photo.style.display = "block";
       photo.src = card.image;
 
-      /*
-        ヒントが空欄の場合の表示です。
-      */
       hint.textContent =
         card.hint !== ""
           ? card.hint
@@ -693,20 +789,96 @@
 
       answer.textContent = card.answer;
 
+      /*
+        現在の通し番号も表示します。
+      */
       document.getElementById(
         "count"
       ).textContent =
+        "No. " +
+        card.number +
+        "　　" +
         (currentIndex + 1) +
         " / " +
         filteredCards.length;
+
+      /*
+        入力欄にも現在の番号を反映します。
+      */
+      document.getElementById(
+        "numberInput"
+      ).value = card.number;
 
       updateControlButtons();
     }
 
 
     /*
+      入力された通し番号のカードへ移動します。
+
+      通し番号は全カード共通なので、
+      カテゴリは「すべて」に切り替えます。
+    */
+    function jumpToNumber() {
+      const input =
+        document.getElementById(
+          "numberInput"
+        );
+
+      const message =
+        document.getElementById(
+          "jumpMessage"
+        );
+
+      const requestedNumber =
+        Number(input.value);
+
+      message.textContent = "";
+
+      if (
+        !Number.isInteger(requestedNumber) ||
+        requestedNumber <= 0
+      ) {
+        message.textContent =
+          "正しい通し番号を入力してください。";
+
+        return;
+      }
+
+      const targetIndex =
+        allCards.findIndex(
+          card =>
+            card.number === requestedNumber
+        );
+
+      if (targetIndex === -1) {
+        message.textContent =
+          "No. " +
+          requestedNumber +
+          " のカードはありません。";
+
+        return;
+      }
+
+      /*
+        全カード表示へ切り替えます。
+      */
+      selectedCategory = "すべて";
+      filteredCards = [...allCards];
+      currentIndex = targetIndex;
+
+      document.getElementById(
+        "selectedCategory"
+      ).textContent = "すべて";
+
+      updateActiveCategoryButton();
+
+      displayCard();
+    }
+
+
+    /*
       ヒントを表示します。
-      一度表示した後も、ボタン名は変えません。
     */
     function showHint() {
       if (filteredCards.length === 0) {
@@ -721,7 +893,6 @@
 
     /*
       答えを表示します。
-      一度表示した後も、ボタン名は変えません。
     */
     function showAnswer() {
       if (filteredCards.length === 0) {
@@ -736,7 +907,6 @@
 
     /*
       次のカードへ進みます。
-      最後のカードの次は最初へ戻ります。
     */
     function showNextCard() {
       if (filteredCards.length === 0) {
@@ -747,13 +917,16 @@
         (currentIndex + 1) %
         filteredCards.length;
 
+      document.getElementById(
+        "jumpMessage"
+      ).textContent = "";
+
       displayCard();
     }
 
 
     /*
       前のカードへ戻ります。
-      最初のカードの前は最後へ移動します。
     */
     function showPreviousCard() {
       if (filteredCards.length === 0) {
@@ -768,13 +941,16 @@
         ) %
         filteredCards.length;
 
+      document.getElementById(
+        "jumpMessage"
+      ).textContent = "";
+
       displayCard();
     }
 
 
     /*
-      カードがない場合は
-      操作ボタンを無効にします。
+      カードがない場合はボタンを無効にします。
     */
     function updateControlButtons() {
       const disabled =
@@ -795,6 +971,10 @@
       document.getElementById(
         "nextButton"
       ).disabled = disabled;
+
+      document.getElementById(
+        "jumpButton"
+      ).disabled = allCards.length === 0;
     }
 
 
@@ -818,6 +998,7 @@
         "\n\nGitHub PagesのURLから" +
         "開いているか確認してください。";
 
+      allCards = [];
       filteredCards = [];
 
       updateControlButtons();
@@ -825,7 +1006,7 @@
 
 
     /*
-      画像ファイルが存在しない場合の処理です。
+      画像が見つからない場合の処理
     */
     document
       .getElementById("photo")
@@ -844,7 +1025,7 @@
 
 
     /*
-      画像が正常に読み込まれた場合の処理です。
+      画像が正常に読み込まれた場合の処理
     */
     document
       .getElementById("photo")
@@ -863,7 +1044,7 @@
 
 
     /*
-      各操作ボタンに処理を割り当てます。
+      各ボタンへ処理を割り当てます。
     */
     document
       .getElementById("previousButton")
@@ -893,10 +1074,31 @@
         showNextCard
       );
 
+    document
+      .getElementById("jumpButton")
+      .addEventListener(
+        "click",
+        jumpToNumber
+      );
+
 
     /*
-      ページを開いたときに
-      CSVを読み込みます。
+      番号入力欄でEnterを押した場合も移動します。
+    */
+    document
+      .getElementById("numberInput")
+      .addEventListener(
+        "keydown",
+        event => {
+          if (event.key === "Enter") {
+            jumpToNumber();
+          }
+        }
+      );
+
+
+    /*
+      ページを開いたときにCSVを読み込みます。
     */
     loadCards();
   </script>
