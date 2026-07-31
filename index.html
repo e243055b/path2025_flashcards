@@ -1,3 +1,100 @@
-const cards = [
-  { image: "images/lung01.jpg", answer: "肺水腫"  }
-];
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>病理フラッシュカード</title>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 16px;
+    }
+
+    img {
+      max-width: 100%;
+      max-height: 70vh;
+      object-fit: contain;
+      border: 1px solid #aaa;
+    }
+
+    #answer {
+      display: none;
+      margin: 20px;
+      font-size: 28px;
+      font-weight: bold;
+    }
+
+    button {
+      margin: 6px;
+      padding: 10px 18px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>病理フラッシュカード</h1>
+
+  <p id="count"></p>
+
+  <img id="photo" alt="病理画像">
+
+  <div id="answer"></div>
+
+  <div>
+    <button onclick="previousCard()">前へ</button>
+    <button onclick="showAnswer()">答えを見る</button>
+    <button onclick="nextCard()">次へ</button>
+  </div>
+
+  <script>
+    const cards = [
+      {
+        image: "images/lung01.jpg",
+        answer: "肺水腫"
+      }
+    ];
+
+    let current = 0;
+
+    function displayCard() {
+      document.getElementById("photo").src =
+        cards[current].image;
+
+      document.getElementById("answer").textContent =
+        cards[current].answer;
+
+      document.getElementById("answer").style.display =
+        "none";
+
+      document.getElementById("count").textContent =
+        (current + 1) + " / " + cards.length;
+    }
+
+    function showAnswer() {
+      document.getElementById("answer").style.display =
+        "block";
+    }
+
+    function nextCard() {
+      current = (current + 1) % cards.length;
+      displayCard();
+    }
+
+    function previousCard() {
+      current =
+        (current - 1 + cards.length) % cards.length;
+
+      displayCard();
+    }
+
+    displayCard();
+  </script>
+
+</body>
+</html>
