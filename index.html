@@ -2,7 +2,11 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
 
   <title>病理フラッシュカード</title>
 
@@ -14,11 +18,36 @@
       padding: 16px;
     }
 
+    .category-area {
+      margin-bottom: 16px;
+    }
+
+    label {
+      font-size: 18px;
+    }
+
+    select {
+      padding: 8px 12px;
+      font-size: 18px;
+    }
+
     #photo {
+      display: block;
       max-width: 100%;
-      max-height: 70vh;
+      max-height: 62vh;
       object-fit: contain;
+      margin: 0 auto;
       border: 1px solid #aaa;
+    }
+
+    #hint {
+      display: none;
+      margin: 18px auto;
+      padding: 14px;
+      max-width: 700px;
+      font-size: 20px;
+      background-color: #f1f1f1;
+      border-radius: 8px;
     }
 
     #answer {
@@ -28,15 +57,24 @@
       font-weight: bold;
     }
 
+    .buttons {
+      margin-top: 16px;
+    }
+
     button {
       margin: 6px;
       padding: 10px 18px;
       font-size: 18px;
+      cursor: pointer;
     }
 
     #error {
       color: #b00020;
       white-space: pre-wrap;
+    }
+
+    #categoryName {
+      font-weight: bold;
     }
   </style>
 </head>
@@ -45,31 +83,69 @@
 
   <h1>病理フラッシュカード</h1>
 
+  <div class="category-area">
+    <label for="categorySelect">
+      カテゴリ：
+    </label>
+
+    <select id="categorySelect">
+      <option value="すべて">
+        すべて
+      </option>
+    </select>
+  </div>
+
+  <p>
+    選択中：
+    <span id="categoryName">すべて</span>
+  </p>
+
   <p id="count">読み込み中...</p>
 
   <p id="error"></p>
 
-  <img id="photo" alt="病理画像">
+  <img
+    id="photo"
+    alt="病理画像"
+  >
+
+  <div id="hint"></div>
 
   <div id="answer"></div>
 
-  <div>
-    <button onclick="previousCard()">前へ</button>
-    <button onclick="showAnswer()">答えを見る</button>
-    <button onclick="nextCard()">次へ</button>
+  <div class="buttons">
+    <button id="previousButton">
+      前へ
+    </button>
+
+    <button id="hintButton">
+      ヒントを見る
+    </button>
+
+    <button id="answerButton">
+      答えを見る
+    </button>
+
+    <button id="nextButton">
+      次へ
+    </button>
   </div>
 
   <script>
-    let cards = [];
+    let allCards = [];
+    let filteredCards = [];
     let current = 0;
 
     /*
-      CSVの1行を分解する関数です。
-      答えの中にカンマがあっても、
-      Excelがダブルクォーテーションで囲めば処理できます。
+      CSVの1行を列ごとに分割します。
+
+      Excelがカンマを含む文章を
+      ダブルクォーテーションで囲んだ場合にも
+      対応します。
     */
     function parseCSVLine(line) {
       const values = [];
+
       let value = "";
       let insideQuotes = false;
 
@@ -77,18 +153,21 @@
         const character = line[i];
 
         if (character === '"') {
-          /*
-            CSV内で "" と書かれている場合は、
-            1個の " として扱います。
-          */
-          if (insideQuotes && line[i + 1] === '"') {
+          if (
+            insideQuotes &&
+            line[i + 1] === '"'
+          ) {
             value += '"';
             i++;
+
           } else {
             insideQuotes = !insideQuotes;
           }
 
-        } else if (character === "," && !insideQuotes) {
+        } else if (
+          character === "," &&
+          !insideQuotes
+        ) {
           values.push(value);
           value = "";
 
@@ -103,15 +182,27 @@
     }
 
     /*
-      cards.csvを読み込んで、
-      フラッシュカードの一覧を作ります。
+      カテゴリ欄を配列に変換します。
+
+      例：
+      代謝障害|肝胆膵
+
+      ↓
+
+      ["代謝障害", "肝胆膵"]
+    */
+    function parseCategories(categoryText) {
+      return categoryText
+        .split("|")
+        .map(category => category.trim())
+        .filter(category => category !== "");
+    }
+
+    /*
+      cards.csvを読み込みます。
     */
     async function loadCards() {
       try {
-        /*
-          ?v=時刻 を付けることで、
-          更新前のCSVがキャッシュから表示されにくくします。
-        */
         const response = await fetch(
           "cards.csv?v=" + Date.now()
         );
@@ -124,14 +215,12 @@
 
         const csvText = await response.text();
 
-        /*
-          UTF-8 BOMを削除し、
-          空行を除外します。
-        */
         const lines = csvText
           .replace(/^\uFEFF/, "")
           .split(/\r?\n/)
-          .filter(line => line.trim() !== "");
+          .filter(
+            line => line.trim() !== ""
+          );
 
         if (lines.length < 2) {
           throw new Error(
@@ -140,130 +229,384 @@
         }
 
         /*
-          1行目の見出しを読み込みます。
+          1行目の列名を読み込みます。
         */
         const headers = parseCSVLine(lines[0])
           .map(value => value.trim());
 
-        const imageIndex = headers.indexOf("image");
-        const answerIndex = headers.indexOf("answer");
+        const imageIndex =
+          headers.indexOf("image");
 
-        if (imageIndex === -1 || answerIndex === -1) {
+        const answerIndex =
+          headers.indexOf("answer");
+
+        const categoryIndex =
+          headers.indexOf("category");
+
+        const hintIndex =
+          headers.indexOf("hint");
+
+        if (
+          imageIndex === -1 ||
+          answerIndex === -1 ||
+          categoryIndex === -1 ||
+          hintIndex === -1
+        ) {
           throw new Error(
-            "cards.csvの1行目には image,answer が必要です。"
+            "cards.csvの1行目には " +
+            "image,answer,category,hint " +
+            "が必要です。"
           );
         }
 
         /*
-          2行目以降をカード情報として読み込みます。
+          2行目以降をカードとして読み込みます。
         */
-        cards = lines.slice(1)
+        allCards = lines
+          .slice(1)
           .map(line => {
-            const columns = parseCSVLine(line);
+            const columns =
+              parseCSVLine(line);
 
             const fileName =
-              (columns[imageIndex] || "").trim();
+              (
+                columns[imageIndex] || ""
+              ).trim();
 
             const answer =
-              (columns[answerIndex] || "").trim();
+              (
+                columns[answerIndex] || ""
+              ).trim();
+
+            const categoryText =
+              (
+                columns[categoryIndex] || ""
+              ).trim();
+
+            const hint =
+              (
+                columns[hintIndex] || ""
+              ).trim();
 
             /*
-              CSVには lung01.jpg のように
-              ファイル名だけを書きます。
-
-              HTML側で自動的に images/ を付けます。
+              カテゴリを配列に変換します。
             */
-            const imagePath = fileName.startsWith("images/")
-              ? fileName
-              : "images/" + fileName;
+            const categories =
+              parseCategories(categoryText);
+
+            /*
+              CSVには画像ファイル名だけを書き、
+              images/はHTML側で自動追加します。
+            */
+            const imagePath =
+              fileName.startsWith("images/")
+                ? fileName
+                : "images/" + fileName;
 
             return {
               image: imagePath,
-              answer: answer
+              answer: answer,
+              categories: categories,
+              hint: hint
             };
           })
           .filter(card =>
             card.image !== "images/" &&
-            card.answer !== ""
+            card.answer !== "" &&
+            card.categories.length > 0
           );
 
-        if (cards.length === 0) {
+        if (allCards.length === 0) {
           throw new Error(
             "有効なカードがありません。"
           );
         }
 
+        createCategoryOptions();
+
+        filteredCards = [...allCards];
+
         displayCard();
 
       } catch (error) {
-        document.getElementById("count").textContent = "";
+        document.getElementById(
+          "count"
+        ).textContent = "";
 
-        document.getElementById("error").textContent =
+        document.getElementById(
+          "error"
+        ).textContent =
           "読み込みエラー\n" +
           error.message +
-          "\n\nGitHub PagesのURLから開いているか確認してください。";
+          "\n\nGitHub PagesのURLから" +
+          "開いているか確認してください。";
       }
+    }
+
+    /*
+      全カードに含まれるカテゴリを集め、
+      プルダウンを作成します。
+    */
+    function createCategoryOptions() {
+      const categorySelect =
+        document.getElementById(
+          "categorySelect"
+        );
+
+      const categorySet = new Set();
+
+      allCards.forEach(card => {
+        card.categories.forEach(category => {
+          categorySet.add(category);
+        });
+      });
+
+      const categories =
+        Array.from(categorySet);
+
+      /*
+        五十音順に並べます。
+      */
+      categories.sort(
+        (a, b) =>
+          a.localeCompare(b, "ja")
+      );
+
+      categories.forEach(category => {
+        const option =
+          document.createElement("option");
+
+        option.value = category;
+        option.textContent = category;
+
+        categorySelect.appendChild(option);
+      });
+    }
+
+    /*
+      選択されたカテゴリでカードを絞り込みます。
+
+      カードのcategories配列に
+      選択カテゴリが含まれていれば表示します。
+    */
+    function filterByCategory() {
+      const selectedCategory =
+        document.getElementById(
+          "categorySelect"
+        ).value;
+
+      document.getElementById(
+        "categoryName"
+      ).textContent = selectedCategory;
+
+      if (selectedCategory === "すべて") {
+        filteredCards = [...allCards];
+
+      } else {
+        filteredCards = allCards.filter(
+          card =>
+            card.categories.includes(
+              selectedCategory
+            )
+        );
+      }
+
+      current = 0;
+
+      displayCard();
     }
 
     /*
       現在のカードを表示します。
     */
     function displayCard() {
-      if (cards.length === 0) {
+      const photo =
+        document.getElementById("photo");
+
+      const hint =
+        document.getElementById("hint");
+
+      const answer =
+        document.getElementById("answer");
+
+      if (filteredCards.length === 0) {
+        document.getElementById(
+          "count"
+        ).textContent =
+          "このカテゴリにはカードがありません。";
+
+        photo.removeAttribute("src");
+
+        hint.style.display = "none";
+        answer.style.display = "none";
+
         return;
       }
 
-      const card = cards[current];
+      const card = filteredCards[current];
 
-      document.getElementById("photo").src =
-        card.image;
+      photo.src = card.image;
 
-      document.getElementById("answer").textContent =
-        card.answer;
+      hint.textContent = card.hint;
 
-      document.getElementById("answer").style.display =
-        "none";
+      answer.textContent = card.answer;
 
-      document.getElementById("count").textContent =
-        (current + 1) + " / " + cards.length;
+      /*
+        カードが変わるたびに
+        ヒントと答えを隠します。
+      */
+      hint.style.display = "none";
+      answer.style.display = "none";
+
+      document.getElementById(
+        "hintButton"
+      ).textContent = "ヒントを見る";
+
+      document.getElementById(
+        "answerButton"
+      ).textContent = "答えを見る";
+
+      document.getElementById(
+        "count"
+      ).textContent =
+        (current + 1) +
+        " / " +
+        filteredCards.length;
     }
 
     /*
-      答えを表示します。
+      ヒントの表示と非表示を切り替えます。
     */
-    function showAnswer() {
-      document.getElementById("answer").style.display =
-        "block";
+    function toggleHint() {
+      if (filteredCards.length === 0) {
+        return;
+      }
+
+      const hint =
+        document.getElementById("hint");
+
+      const hintButton =
+        document.getElementById(
+          "hintButton"
+        );
+
+      if (hint.style.display === "block") {
+        hint.style.display = "none";
+
+        hintButton.textContent =
+          "ヒントを見る";
+
+      } else {
+        hint.style.display = "block";
+
+        hintButton.textContent =
+          "ヒントを隠す";
+      }
+    }
+
+    /*
+      答えの表示と非表示を切り替えます。
+    */
+    function toggleAnswer() {
+      if (filteredCards.length === 0) {
+        return;
+      }
+
+      const answer =
+        document.getElementById("answer");
+
+      const answerButton =
+        document.getElementById(
+          "answerButton"
+        );
+
+      if (
+        answer.style.display === "block"
+      ) {
+        answer.style.display = "none";
+
+        answerButton.textContent =
+          "答えを見る";
+
+      } else {
+        answer.style.display = "block";
+
+        answerButton.textContent =
+          "答えを隠す";
+      }
     }
 
     /*
       次のカードへ進みます。
-      最後のカードの次は最初に戻ります。
     */
     function nextCard() {
-      if (cards.length === 0) {
+      if (filteredCards.length === 0) {
         return;
       }
 
-      current = (current + 1) % cards.length;
+      current =
+        (current + 1) %
+        filteredCards.length;
 
       displayCard();
     }
 
     /*
       前のカードへ戻ります。
-      最初のカードの前は最後に移動します。
     */
     function previousCard() {
-      if (cards.length === 0) {
+      if (filteredCards.length === 0) {
         return;
       }
 
       current =
-        (current - 1 + cards.length) % cards.length;
+        (
+          current -
+          1 +
+          filteredCards.length
+        ) %
+        filteredCards.length;
 
       displayCard();
     }
+
+    /*
+      ボタンとプルダウンに処理を割り当てます。
+    */
+    document
+      .getElementById("categorySelect")
+      .addEventListener(
+        "change",
+        filterByCategory
+      );
+
+    document
+      .getElementById("previousButton")
+      .addEventListener(
+        "click",
+        previousCard
+      );
+
+    document
+      .getElementById("hintButton")
+      .addEventListener(
+        "click",
+        toggleHint
+      );
+
+    document
+      .getElementById("answerButton")
+      .addEventListener(
+        "click",
+        toggleAnswer
+      );
+
+    document
+      .getElementById("nextButton")
+      .addEventListener(
+        "click",
+        nextCard
+      );
 
     /*
       ページを開いたときにCSVを読み込みます。
