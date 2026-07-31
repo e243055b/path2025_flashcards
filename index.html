@@ -14,7 +14,7 @@
       padding: 16px;
     }
 
-    img {
+    #photo {
       max-width: 100%;
       max-height: 70vh;
       object-fit: contain;
@@ -33,6 +33,11 @@
       padding: 10px 18px;
       font-size: 18px;
     }
+
+    #error {
+      color: #b00020;
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 
@@ -40,7 +45,9 @@
 
   <h1>病理フラッシュカード</h1>
 
-  <p id="count"></p>
+  <p id="count">読み込み中...</p>
+
+  <p id="error"></p>
 
   <img id="photo" alt="病理画像">
 
@@ -53,25 +60,166 @@
   </div>
 
   <script>
-    const cards = [
-      {
-        image: "images/lung01.jpg",
-        answer: "肺水腫"
-      },
-      {
-        image: "images/lung02.jpg",
-        answer: "肺過誤腫"
-      }
-    ];
-
+    let cards = [];
     let current = 0;
 
+    /*
+      CSVの1行を分解する関数です。
+      答えの中にカンマがあっても、
+      Excelがダブルクォーテーションで囲めば処理できます。
+    */
+    function parseCSVLine(line) {
+      const values = [];
+      let value = "";
+      let insideQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const character = line[i];
+
+        if (character === '"') {
+          /*
+            CSV内で "" と書かれている場合は、
+            1個の " として扱います。
+          */
+          if (insideQuotes && line[i + 1] === '"') {
+            value += '"';
+            i++;
+          } else {
+            insideQuotes = !insideQuotes;
+          }
+
+        } else if (character === "," && !insideQuotes) {
+          values.push(value);
+          value = "";
+
+        } else {
+          value += character;
+        }
+      }
+
+      values.push(value);
+
+      return values;
+    }
+
+    /*
+      cards.csvを読み込んで、
+      フラッシュカードの一覧を作ります。
+    */
+    async function loadCards() {
+      try {
+        /*
+          ?v=時刻 を付けることで、
+          更新前のCSVがキャッシュから表示されにくくします。
+        */
+        const response = await fetch(
+          "cards.csv?v=" + Date.now()
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            "cards.csvを取得できませんでした。"
+          );
+        }
+
+        const csvText = await response.text();
+
+        /*
+          UTF-8 BOMを削除し、
+          空行を除外します。
+        */
+        const lines = csvText
+          .replace(/^\uFEFF/, "")
+          .split(/\r?\n/)
+          .filter(line => line.trim() !== "");
+
+        if (lines.length < 2) {
+          throw new Error(
+            "cards.csvにカードが登録されていません。"
+          );
+        }
+
+        /*
+          1行目の見出しを読み込みます。
+        */
+        const headers = parseCSVLine(lines[0])
+          .map(value => value.trim());
+
+        const imageIndex = headers.indexOf("image");
+        const answerIndex = headers.indexOf("answer");
+
+        if (imageIndex === -1 || answerIndex === -1) {
+          throw new Error(
+            "cards.csvの1行目には image,answer が必要です。"
+          );
+        }
+
+        /*
+          2行目以降をカード情報として読み込みます。
+        */
+        cards = lines.slice(1)
+          .map(line => {
+            const columns = parseCSVLine(line);
+
+            const fileName =
+              (columns[imageIndex] || "").trim();
+
+            const answer =
+              (columns[answerIndex] || "").trim();
+
+            /*
+              CSVには lung01.jpg のように
+              ファイル名だけを書きます。
+
+              HTML側で自動的に images/ を付けます。
+            */
+            const imagePath = fileName.startsWith("images/")
+              ? fileName
+              : "images/" + fileName;
+
+            return {
+              image: imagePath,
+              answer: answer
+            };
+          })
+          .filter(card =>
+            card.image !== "images/" &&
+            card.answer !== ""
+          );
+
+        if (cards.length === 0) {
+          throw new Error(
+            "有効なカードがありません。"
+          );
+        }
+
+        displayCard();
+
+      } catch (error) {
+        document.getElementById("count").textContent = "";
+
+        document.getElementById("error").textContent =
+          "読み込みエラー\n" +
+          error.message +
+          "\n\nGitHub PagesのURLから開いているか確認してください。";
+      }
+    }
+
+    /*
+      現在のカードを表示します。
+    */
     function displayCard() {
+      if (cards.length === 0) {
+        return;
+      }
+
+      const card = cards[current];
+
       document.getElementById("photo").src =
-        cards[current].image;
+        card.image;
 
       document.getElementById("answer").textContent =
-        cards[current].answer;
+        card.answer;
 
       document.getElementById("answer").style.display =
         "none";
@@ -80,24 +228,47 @@
         (current + 1) + " / " + cards.length;
     }
 
+    /*
+      答えを表示します。
+    */
     function showAnswer() {
       document.getElementById("answer").style.display =
         "block";
     }
 
+    /*
+      次のカードへ進みます。
+      最後のカードの次は最初に戻ります。
+    */
     function nextCard() {
+      if (cards.length === 0) {
+        return;
+      }
+
       current = (current + 1) % cards.length;
+
       displayCard();
     }
 
+    /*
+      前のカードへ戻ります。
+      最初のカードの前は最後に移動します。
+    */
     function previousCard() {
+      if (cards.length === 0) {
+        return;
+      }
+
       current =
         (current - 1 + cards.length) % cards.length;
 
       displayCard();
     }
 
-    displayCard();
+    /*
+      ページを開いたときにCSVを読み込みます。
+    */
+    loadCards();
   </script>
 
 </body>
