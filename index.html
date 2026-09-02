@@ -472,7 +472,7 @@
     async function loadCards() {
       try {
         const response = await fetch(
-          "cards.csv?v=" + Date.now()
+          "cards.csv"
         );
 
         if (!response.ok) {
@@ -605,6 +605,8 @@
           (a, b) => a.number - b.number
         );
 
+        preloadImages();
+
         createCategoryButtons();
 
         filterByCategory("すべて");
@@ -614,6 +616,12 @@
       }
     }
 
+    function preloadImages() {
+      allCards.forEach(card => {
+        const img = new Image();
+        img.src = card.image;
+      });
+    }
 
     /*
       CSV内に存在するカテゴリ一覧を取得します。
